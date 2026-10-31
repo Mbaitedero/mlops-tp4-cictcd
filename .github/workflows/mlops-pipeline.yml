@@ -1,0 +1,74 @@
+name: MLOps CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mlops-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Unit and data tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/test_unit.py tests/test_data.py -v
+
+      - name: Model quality gates
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/test_model.py -v
+
+      - name: Security - Bandit
+        run: bandit -r src
+
+      - name: Security - pip-audit
+        run: pip-audit
+
+  staging:
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Simulated deployment to staging
+        run: echo "Deploy candidate to STAGING"
+
+  production:
+    needs: staging
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Simulated deployment to production
+        run: echo "Deploy champion to PRODUCTION"

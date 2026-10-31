@@ -1,0 +1,8 @@
+TP4CICD/
+.venv/
+__pycache__/
+.pytest_cache/
+.coverage
+mlruns/
+mlartifacts/
+mlflow.db
